@@ -10,11 +10,11 @@ Sorting documents by type is a classic back-office job: every filing, statement 
 
 Decision models are a new class of model. They bring frontier-level understanding to a judgment but answer with probabilities instead of generated text. Jev reads the document once and returns a probability for every type, so:
 
-- **It's fast and cheap.** There's no text to generate, and output tokens are free. Inference becomes cheap enough to run on every document, every page or every passage, which opens up work that was too expensive to do with an LLM.
+- **It's fast and cheap.** There's no text to generate, and output tokens are free. Inference becomes cheap enough to run on every document, every page or every passage, which opens up work that was too expensive to do with a decoder-only LLM and too subtle for BERT-class models or keyword rules.
 - **The answer is typed.** It's always one of the types you defined, with no output to parse or validate.
 - **The confidence is usable.** A pipeline can file the sure answers automatically and send the close calls to a person or a larger model.
 
-A bi-encoder's embedding similarity or a keyword rule is cheaper still, but it reads words, not documents. A 10-Q that cites the 10-K, or an 8-K that attaches an earnings release, fools it.
+A BERT-class bi-encoder or a keyword rule is cheaper still, but it reads words, not documents. A 10-Q that cites the 10-K, or an 8-K that attaches an earnings release, fools it.
 
 ## Benchmark
 
@@ -39,17 +39,22 @@ How it was run (October 2026):
 - **Costs.** List prices: Jev $0.042 per million input tokens with output free; Opus 5.5 $4/$20, Haiku 5.5 $0.10/$0.50, GPT-5.5 $5/$30 and GPT-5.4 mini $0.75/$4.50 per million input/output tokens.
 - **Local methods.** The bi-encoder (`all-MiniLM-L6-v2`, zero-shot against the type definitions) and the keyword rules run locally, so they cost compute rather than tokens.
 
-The documents are synthetic, written for this repo with invented companies, and include deliberate hard cases. Treat the numbers as a demonstration, not a leaderboard.
+**A note on the documents.**
+
+- **Familiar types, high scores.** These are very common document types, the kind of public filings and reports every large model has seen many times in training. None of them is written to be hard to identify, so it's no surprise that Jev and the large LLMs score at or near 100%.
+- **Labels and documents line up.** The documents are synthetic, written for this repo with invented companies and modelled on publicly available ones. They were written alongside the type definitions, so the two match closely.
+- **What to read from it.** Read the accuracy column with that in mind. The meaningful comparison is speed and cost: how much faster and cheaper a decision model reaches the same answer.
+- **Long documents aren't tested here.** Every benchmark document is short enough to be sent whole, so the token savings from parsing long documents don't show. They show on long uploads: a 50-page 10-K of 79,000 tokens reaches the model as a 5,500-token overview.
 
 ## How it works
 
-1. **The excerpt** ([`src/excerpt.js`](src/excerpt.js)). A document's type shows in its opening, its section headings and its closing.
-   - A document up to 20k tokens goes whole.
-   - A longer one is cut to an outline: the first and last 500 words, plus every heading with the first sentence under it.
-   - Without three or more headings, it's cut to its first and last 10k tokens.
+1. **Overview** ([`src/excerpt.js`](src/excerpt.js)). The document's text is extracted, and only the most relevant parts go to the model (Jev, or an LLM in the benchmark). Sending less saves tokens, and it keeps the context window from bloating with pages that don't bear on the answer.
+   - A short document, up to 20k tokens, is sent whole.
+   - A longer one is parsed for its headings, layout and structure. The model gets the first and last 500 words, plus every heading with the first sentence under it.
+   - Without three or more headings, it gets the first and last 10k tokens.
 
-   In the demo, a 50-page 10-K of 79k tokens became a 5.5k-token outline. In the browser, [`src/pdf.js`](src/pdf.js) reads PDFs with pdf.js and marks larger type as headings. The file itself never leaves the visitor's machine.
-2. **One question** ([`src/jev.js`](src/jev.js)). The excerpt goes to `POST /v1/systemone` as `state`, with one `choice` question whose options are the 21 types plus "something else", each with a one-line definition ([`src/vocabulary.js`](src/vocabulary.js)). The response carries the choice, its confidence, a probability for every option and the input tokens used.
+   In the demo, a 50-page 10-K of 79k tokens became a 5.5k-token overview. In the browser, [`src/pdf.js`](src/pdf.js) reads PDFs with pdf.js and marks larger type as headings. The file itself never leaves the visitor's machine.
+2. **One question** ([`src/jev.js`](src/jev.js)). That text goes to `POST /v1/systemone` as `state`, with one `choice` question whose options are the 21 types plus "something else", each with a one-line definition ([`src/vocabulary.js`](src/vocabulary.js)). The response carries the choice, its confidence, a probability for every option and the input tokens used.
 3. **The server** ([`api/classify.js`](api/classify.js)). A Vercel function keeps the API key server-side. It fixes the question so the endpoint can't be used as an open proxy, caps the body size, rate-limits each visitor and never logs document text.
 4. **The demo** ([`index.html`](index.html)). While Jev works, the highlight wanders over the types. Once the answer is in, [`src/settle.js`](src/settle.js) replays the real probability distribution, slowing down until it lands on the choice. The keyword rules ([`src/keywords.js`](src/keywords.js)) run in the browser alongside for comparison.
 

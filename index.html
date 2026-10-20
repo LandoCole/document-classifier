@@ -193,7 +193,7 @@ tr.jev td:first-child{font-style:italic}
       <div class="group">
         <p class="label">Your document</p>
         <label class="btn file">Choose a file<input type="file" id="file" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown"></label>
-        <p class="hint">A PDF, TXT or Markdown file, or drop one on the figure. It's read in your browser; only an excerpt of its text is sent.</p>
+        <p class="hint">A PDF, TXT or Markdown file, or drop one on the figure. It's read in your browser; only the most relevant text is sent.</p>
       </div>
       <div class="group">
         <p class="label"><label for="sample">Or a sample</label></p>
@@ -244,15 +244,16 @@ tr.jev td:first-child{font-style:italic}
         <svg id="chartSvg" role="img" aria-label="Accuracy against cost for each method"></svg>
         <figcaption>Fig. 2 · Accuracy against cost per 1,000 documents (log scale). Methods that run locally sit at the left edge.</figcaption>
       </figure>
-      <p class="note" id="benchNote">Calls were made one at a time so latencies don't affect each other. LLM costs use each vendor's list price; Jev's use TypeSafe's. The bi-encoder and keyword rules run on your own hardware, so they cost compute rather than tokens. The documents are synthetic, written to include the hard cases (a 10-Q that cites the 10-K, an 8-K that attaches an earnings release), so treat the numbers as a demonstration, not a leaderboard.</p>
+      <p class="note" id="benchNote">Calls were made one at a time so latencies don't affect each other. LLM costs use each vendor's list price; Jev's use TypeSafe's. The bi-encoder and keyword rules run on your own hardware, so they cost compute rather than tokens.</p>
+      <p class="note" id="benchCaveat"><b>A note on the documents.</b> These are very common document types, the kind of public filings and reports every large model has seen many times in training, and none of them is written to be hard to identify. So it's no surprise that Jev and the large LLMs score at or near 100%. The documents are synthetic, modelled on publicly available ones, and they were written alongside the type definitions, so the labels and the documents line up closely. Read the accuracy column with that in mind. The meaningful comparison is speed and cost: how much faster and cheaper a decision model reaches the same answer. Every benchmark document is short enough to be sent whole, so the token savings from parsing long documents don't show here. They show on long uploads: a 50-page 10-K of 79,000 tokens reaches the model as a 5,500-token overview.</p>
     </div>
   </section>
 
   <section class="sec" aria-labelledby="l-how">
     <h2 class="label" id="l-how">How it works</h2>
     <div class="body">
-      <p><b>The excerpt.</b> Your browser reads the file's text and keeps only what a document's type shows in. A short document goes whole. A long one is cut to its opening, every section heading with the sentence under it, and its closing, or to its two ends if it has no headings. A 300-page filing becomes a few thousand tokens.</p>
-      <p><b>One question.</b> The excerpt goes to Jev with a single choice question: which of these 21 types is it, or none of them? Each option carries a one-line definition. Jev doesn't write an answer. It reads the excerpt once and returns a probability for every option, so the response is a typed result with no text to parse and no output tokens to pay for.</p>
+      <p><b>Overview.</b> Your browser extracts the document's text. A short document is sent to the model whole. For a long one, the text is parsed for its headings, layout and structure, and only the most relevant parts go to the model (Jev here, or an LLM in the benchmark): the opening, every section heading with the sentence under it, and the closing. That saves tokens, and it keeps the context window from bloating with pages that don't bear on the answer, so the model reads what decides the type. A 300-page filing becomes a few thousand tokens.</p>
+      <p><b>One question.</b> That text goes to Jev with a single choice question: which of these 21 types is it, or none of them? Each option carries a one-line definition. Jev doesn't write an answer. It reads the text once and returns a probability for every option, so the response is a typed result with no text to parse and no output tokens to pay for.</p>
       <p><b>Confidence you can route on.</b> Because every type gets a probability, the confidence means something: a pipeline can file the sure answers automatically and send the close calls to a person or a larger model.</p>
     </div>
   </section>
@@ -260,7 +261,7 @@ tr.jev td:first-child{font-style:italic}
   <section class="sec" aria-labelledby="l-why">
     <h2 class="label" id="l-why">Why a decision model</h2>
     <div class="body">
-      <p>I built this to show what Jev, a decision model, does with a classic back-office job: sorting documents by type, fast and accurately. Decision models are a new class of model. They bring frontier-level understanding to a judgment, but answer with probabilities instead of generated text. That makes inference cheap and fast enough to run on every document, every page or every passage, which opens up work that was too expensive to do with a decoder-only LLM and too subtle for a bi-encoder's embedding similarity or a keyword rule.</p>
+      <p>I built this to show what Jev, a decision model, does with a classic back-office job: sorting documents by type, fast and accurately. Decision models are a new class of model. They bring frontier-level understanding to a judgment, but answer with probabilities instead of generated text. That makes inference cheap and fast enough to run on every document, every page or every passage, which opens up work that was too expensive to do with a decoder-only LLM and too subtle for BERT-class models or keyword rules.</p>
     </div>
   </section>
 
