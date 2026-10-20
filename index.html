@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Document classifier · Landon Thornton</title>
+<meta name="description" content="Live document-type classification with Jev, a decision model: a financial document's type in a few hundred milliseconds for a fraction of a cent, benchmarked against LLMs, a bi-encoder and keyword rules.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+[hidden]{display:none!important}
+/* Layout: a project sheet from landonthornton.com. The document controls in a left rail, the classifier as a drafted figure, then the benchmark and notes in the site's label/body columns on the 24px dot grid. */
+:root{
+  /* Flexoki (stephango.com/flexoki), neutrals only, as on landonthornton.com */
+  --paper:#FFFCF0;
+  --ink:#100F0F;
+  --graphite:#6F6E69;
+  --rule:rgba(16,15,15,.16);
+  --dot:rgba(16,15,15,.16);
+  --panel:#E6E4D9;
+  --wash:rgba(255,252,240,.94);
+  --serif:"Michelangelus","EB Garamond","Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --gutter:max(16px, env(safe-area-inset-left, 0px), calc((100vw - 1040px) / 2 + 16px));
+  --gutter-r:max(16px, env(safe-area-inset-right, 0px), calc((100vw - 1040px) / 2 + 16px));
+  --line-top:0 -0.5px 0 0 var(--rule), inset 0 0.5px 0 0 var(--rule), 0 -1.75px 0 0 var(--paper), inset 0 1.75px 0 0 var(--paper);
+  --line-box-gap:0 0 0 1.75px var(--paper), inset 0 0 0 1.75px var(--paper);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){--paper:#100F0F;--ink:#CECDC3;--graphite:#878580;--rule:rgba(206,205,195,.16);--dot:rgba(206,205,195,.12);--panel:#282726;--wash:rgba(16,15,15,.94);color-scheme:dark}
+}
+:root[data-theme="dark"]{--paper:#100F0F;--ink:#CECDC3;--graphite:#878580;--rule:rgba(206,205,195,.16);--dot:rgba(206,205,195,.12);--panel:#282726;--wash:rgba(16,15,15,.94);color-scheme:dark}
+
+body{
+  background-color:var(--paper);
+  background-image:radial-gradient(circle at 12px 12px, var(--dot) 1.15px, transparent 1.65px);
+  background-size:24px 24px;
+  background-position:calc(var(--gutter) - 12px) -12px;
+  color:var(--ink);
+  font-family:var(--serif);
+  font-size:19px;
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:var(--ink);text-decoration-thickness:1px;text-underline-offset:4px}
+:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;min-height:48px;
+  padding-left:var(--gutter);padding-right:var(--gutter-r);background:var(--wash);box-shadow:0 0.5px 0 0 var(--rule);
+  font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase}
+.topbar span:last-child{color:var(--graphite)}
+.topbar .home{color:inherit;text-decoration:none}
+.topbar .home:hover{text-decoration:underline}
+
+.wrap{padding-left:var(--gutter);padding-right:var(--gutter-r);padding-bottom:48px}
+.sec{display:grid;grid-template-columns:168px minmax(0,672px);gap:0 48px;padding-block:48px;box-shadow:var(--line-top)}
+.sec.first{box-shadow:none}
+.label{font-family:var(--mono);font-weight:400;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--graphite);margin:0;line-height:24px}
+.body{min-width:0}
+.body > p{margin:0 0 24px;line-height:24px;max-width:62ch;text-wrap:pretty}
+.body > p:last-child{margin-bottom:0}
+h1{font-weight:400;font-size:clamp(44px,6vw,64px);line-height:72px;letter-spacing:-.015em;margin:0 0 24px;text-wrap:balance}
+.lead{font-style:italic;font-size:clamp(22px,2.4vw,26px);color:var(--graphite)}
+.body > p.lead{line-height:48px;margin-bottom:24px;text-wrap:balance}
+.meta{display:flex;flex-wrap:wrap;gap:0 24px;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--graphite)}
+.body > p.meta{line-height:24px}
+
+/* ---------- the tool ---------- */
+.tool{display:grid;grid-template-columns:216px minmax(0,1fr);gap:24px 48px;padding-block:48px;box-shadow:var(--line-top)}
+.controls{display:grid;align-content:start;gap:24px;min-width:0}
+.group{display:grid;gap:0}
+.hint{margin:12px 0 0;font-style:italic;font-size:15px;line-height:24px;color:var(--graphite)}
+.btn{box-sizing:border-box;display:grid;place-items:center;height:48px;width:100%;padding:0;background:var(--paper);border:0;outline:1px solid var(--ink);outline-offset:-0.5px;box-shadow:var(--line-box-gap);color:var(--ink);font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+.btn:hover{background:var(--ink);color:var(--paper)}
+.btn:focus-within{outline-width:2px}
+.btn.quiet{outline-color:var(--rule)}
+.btn.quiet:hover{outline-color:var(--ink)}
+.file input{position:absolute;width:1px;height:1px;opacity:0}
+select{box-sizing:border-box;width:100%;height:48px;padding:0 12px;border:0;border-radius:0;outline:1px solid var(--ink);outline-offset:-0.5px;box-shadow:var(--line-box-gap);background:var(--paper);color:var(--ink);font-family:var(--mono);font-size:12px;cursor:pointer}
+.group .btn + .btn, .group select + .btn{margin-top:12px}
+.readout{margin:12px 0 0;padding-top:12px;box-shadow:inset 0 0.5px 0 0 var(--rule);font-family:var(--mono);font-size:11px;line-height:24px;color:var(--graphite)}
+.readout b{font-weight:500;color:var(--ink)}
+
+.fig{margin:0;min-width:0;display:grid;grid-template-columns:minmax(0,1fr);gap:0}
+.stage{position:relative;width:round(down, 100%, 24px);box-sizing:border-box;padding:24px;background:var(--paper);outline:1px solid var(--rule);outline-offset:-0.5px;box-shadow:var(--line-box-gap)}
+.stage.drag{outline:2px dashed var(--ink)}
+.docline{margin:0;font-family:var(--mono);font-size:11px;line-height:24px;letter-spacing:.06em;color:var(--graphite);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.docline b{font-weight:500;color:var(--ink)}
+.verdict{margin:24px 0 0;min-height:48px;font-size:clamp(28px,4vw,36px);line-height:48px;font-weight:400;letter-spacing:-.01em;overflow-wrap:anywhere}
+.verdict.weighing{color:var(--graphite)}
+.sub{margin:0;font-family:var(--mono);font-size:12px;line-height:24px;color:var(--graphite);font-variant-numeric:tabular-nums}
+.sub b{font-weight:500;color:var(--ink)}
+.tags{display:flex;flex-wrap:wrap;gap:12px;margin:24px 0 0;padding:0;list-style:none}
+.tags li{display:inline-flex;align-items:center;height:36px;padding:0 12px;outline:1px solid var(--rule);outline-offset:-0.5px;font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--graphite);transition:background .06s,color .06s}
+.tags li.on{background:var(--panel);color:var(--ink);outline-color:var(--ink)}
+.tags li.hit{background:var(--ink);color:var(--paper);outline-color:var(--ink)}
+.tags li.kw{box-shadow:inset 0 -3px 0 0 var(--graphite)}
+.probs{display:grid;grid-template-columns:minmax(0,1fr) minmax(96px,240px) 48px;gap:0 12px;margin:24px 0 0;align-items:center}
+.probs dt{font-size:17px;line-height:24px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.probs dd{margin:0;height:24px;display:flex;align-items:center}
+.probs .bar{height:8px;background:var(--ink);min-width:1px}
+.probs .bar.lo{background:var(--graphite);opacity:.5}
+.probs .pct{justify-content:flex-end;font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums}
+.empty{margin:24px 0 0;font-style:italic;color:var(--graphite);line-height:24px}
+.fig figcaption{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:0 24px;font-family:var(--mono);font-size:11px;line-height:48px;letter-spacing:.04em;color:var(--graphite)}
+.key{display:flex;flex-wrap:wrap;gap:0 18px}
+.key span{display:inline-flex;align-items:center;gap:8px}
+.sw{display:inline-block;width:18px;height:12px;outline:1px solid var(--ink);outline-offset:-0.5px}
+.sw.hit{background:var(--ink)}
+.sw.kw{outline-color:var(--rule);box-shadow:inset 0 -3px 0 0 var(--graphite)}
+
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:0;width:round(down, 100%, 24px);outline:1px solid var(--rule);outline-offset:-0.5px;box-shadow:var(--line-box-gap)}
+.stat{padding:12px;min-width:0;display:grid;align-content:start}
+.stat + .stat{box-shadow:inset 0.5px 0 0 var(--rule)}
+.stat dt{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--graphite);line-height:24px}
+.stat dd{margin:0}
+.stat .v{font-size:28px;line-height:48px;font-variant-numeric:tabular-nums lining-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat .v.word{font-size:19px}
+.stat .s{font-family:var(--mono);font-size:11px;line-height:24px;color:var(--graphite)}
+.tool .stats{grid-column:2}
+
+/* ---------- benchmark ---------- */
+.tablebox{overflow-x:auto;width:round(down, 100%, 24px)}
+table{width:100%;min-width:560px;border-collapse:collapse;font-variant-numeric:tabular-nums}
+caption{text-align:left;font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--graphite);line-height:24px;padding-bottom:12px}
+th,td{padding:0 0 0 12px;line-height:48px;text-align:right;box-shadow:inset 0 -0.5px 0 0 var(--rule);white-space:nowrap}
+th:first-child,td:first-child{text-align:left;padding-left:0}
+thead th{font-family:var(--mono);font-weight:400;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--graphite);line-height:24px;padding-bottom:12px;vertical-align:bottom}
+td{font-family:var(--mono);font-size:13px}
+td:first-child{font-family:var(--serif);font-size:18px}
+td .k{display:block;margin-top:-18px;line-height:18px;padding-bottom:6px;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--graphite)}
+tr.jev td{font-weight:500}
+tr.jev td:first-child{font-style:italic}
+.chart{margin:48px 0 0;width:round(down, 100%, 24px)}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart .ax{stroke:var(--ink);stroke-width:1}
+.chart .gr{stroke:var(--rule);stroke-width:1}
+.chart .t{font-family:var(--mono);font-size:10px;fill:var(--graphite)}
+.chart .n{font-family:var(--serif);font-size:15px;fill:var(--ink);paint-order:stroke;stroke:var(--paper);stroke-width:4px;stroke-linejoin:round}
+.chart .pt{fill:var(--paper);stroke:var(--ink);stroke-width:1.2}
+.chart .pt.jev{fill:var(--ink)}
+.chart figcaption{font-family:var(--mono);font-size:11px;line-height:48px;letter-spacing:.04em;color:var(--graphite)}
+.note{margin:24px 0 0;line-height:24px;font-size:17px;color:var(--graphite);max-width:62ch}
+.takeaway{font-style:italic;font-size:21px}
+
+.foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:0 24px;padding-block:24px;line-height:24px;box-shadow:var(--line-top);font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--graphite)}
+.foot a{color:inherit}
+
+@media (max-width:960px){
+  .tool{grid-template-columns:minmax(0,1fr)}
+  .controls{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 48px}
+  .tool .stats{grid-column:auto}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stat:nth-child(3){box-shadow:inset 0 0.5px 0 0 var(--rule)}
+  .stat:nth-child(4){box-shadow:inset 0.5px 0 0 var(--rule), inset 0 0.5px 0 0 var(--rule)}
+}
+@media (max-width:760px){
+  .sec{grid-template-columns:minmax(0,1fr)}
+  .sec > .label{margin-bottom:24px}
+}
+@media (max-width:520px){
+  .controls{grid-template-columns:minmax(0,1fr)}
+  .stats{grid-template-columns:minmax(0,1fr)}
+  .stat + .stat, .stat:nth-child(4){box-shadow:inset 0 0.5px 0 0 var(--rule)}
+  .probs{grid-template-columns:minmax(0,1fr) 72px 48px}
+  .stage{padding:12px}
+  .tags{gap:6px}
+  .tags li{height:24px;padding:0 6px;font-size:10px;letter-spacing:.02em}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a href="https://landonthornton.com/" class="home">Landon Thornton</a>
+  <span>Work · Document AI</span>
+</header>
+
+<main class="wrap">
+  <section class="sec first" aria-labelledby="ttl">
+    <p class="label">Interactive tool</p>
+    <div class="body">
+      <h1 id="ttl">Document classifier</h1>
+      <p class="lead">Drop in a financial document and a decision model names its type in a few hundred milliseconds, for a fraction of a cent.</p>
+      <p class="meta"><span>Jev decision model</span><span>21 document types</span><span>Benchmarked against LLMs</span><span>Your file stays in your browser</span></p>
+    </div>
+  </section>
+
+  <section class="tool" aria-label="Classifier">
+    <aside class="controls" aria-label="Choose a document">
+      <div class="group">
+        <p class="label">Your document</p>
+        <label class="btn file">Choose a file<input type="file" id="file" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown"></label>
+        <p class="hint">A PDF, TXT or Markdown file, or drop one on the figure. It's read in your browser; only an excerpt of its text is sent.</p>
+      </div>
+      <div class="group">
+        <p class="label"><label for="sample">Or a sample</label></p>
+        <select id="sample"><option value="">Choose a sample…</option></select>
+        <button type="button" class="btn quiet" id="random">Random sample</button>
+        <p class="hint">Synthetic documents written for the benchmark. The companies in them are invented.</p>
+      </div>
+      <div class="group">
+        <p class="label">What's sent</p>
+        <p class="readout" id="sent">Nothing yet.</p>
+      </div>
+    </aside>
+
+    <figure class="fig">
+      <div class="stage" id="stage">
+        <p class="docline" id="docline">No document yet</p>
+        <p class="verdict" id="verdict" aria-live="polite">Choose a document</p>
+        <p class="sub" id="sub">Jev will weigh it against every type below.</p>
+        <ul class="tags" id="tags" aria-label="Document types"></ul>
+        <dl class="probs" id="probs" hidden></dl>
+      </div>
+      <figcaption>
+        <span>Fig. 1 · Live classification with Jev</span>
+        <span class="key"><span><i class="sw hit"></i>Jev's answer</span><span><i class="sw kw"></i>Keyword rules' answer</span></span>
+      </figcaption>
+    </figure>
+
+    <dl class="stats" id="stats">
+      <div class="stat"><dt>Speed</dt><dd><div class="v" id="sSpeed">–</div><div class="s" id="sSpeedS">round trip to Jev</div></dd></div>
+      <div class="stat"><dt>Tokens read</dt><dd><div class="v" id="sTok">–</div><div class="s" id="sTokS">of the document's text</div></dd></div>
+      <div class="stat"><dt>Cost</dt><dd><div class="v" id="sCost">–</div><div class="s" id="sCostS">at $0.042 per million tokens</div></dd></div>
+      <div class="stat"><dt>Keyword rules said</dt><dd><div class="v word" id="sKw">–</div><div class="s" id="sKwS">the legacy approach, run here</div></dd></div>
+    </dl>
+  </section>
+
+  <section class="sec" aria-labelledby="l-bench">
+    <h2 class="label" id="l-bench">Benchmark</h2>
+    <div class="body">
+      <p class="lead" id="takeaway">The same documents, the same 21 types, five ways.</p>
+      <div class="tablebox">
+        <table id="bench">
+          <caption id="benchCap">Loading the benchmark…</caption>
+          <thead><tr><th scope="col">Method</th><th scope="col">Accuracy</th><th scope="col">Median latency</th><th scope="col">Input tokens / doc</th><th scope="col">Cost / 1,000 docs</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <figure class="chart" id="chart" hidden>
+        <svg id="chartSvg" role="img" aria-label="Accuracy against cost for each method"></svg>
+        <figcaption>Fig. 2 · Accuracy against cost per 1,000 documents (log scale). Methods that run locally sit at the left edge.</figcaption>
+      </figure>
+      <p class="note" id="benchNote">Calls were made one at a time so latencies don't affect each other. LLM costs use each vendor's list price; Jev's use TypeSafe's. The bi-encoder and keyword rules run on your own hardware, so they cost compute rather than tokens. The documents are synthetic, written to include the hard cases (a 10-Q that cites the 10-K, an 8-K that attaches an earnings release), so treat the numbers as a demonstration, not a leaderboard.</p>
+    </div>
+  </section>
+
+  <section class="sec" aria-labelledby="l-how">
+    <h2 class="label" id="l-how">How it works</h2>
+    <div class="body">
+      <p><b>The excerpt.</b> Your browser reads the file's text and keeps only what a document's type shows in. A short document goes whole. A long one is cut to its opening, every section heading with the sentence under it, and its closing, or to its two ends if it has no headings. A 300-page filing becomes a few thousand tokens.</p>
+      <p><b>One question.</b> The excerpt goes to Jev with a single choice question: which of these 21 types is it, or none of them? Each option carries a one-line definition. Jev doesn't write an answer. It reads the excerpt once and returns a probability for every option, so the response is a typed result with no text to parse and no output tokens to pay for.</p>
+      <p><b>Confidence you can route on.</b> Because every type gets a probability, the confidence means something: a pipeline can file the sure answers automatically and send the close calls to a person or a larger model.</p>
+    </div>
+  </section>
+
+  <section class="sec" aria-labelledby="l-why">
+    <h2 class="label" id="l-why">Why a decision model</h2>
+    <div class="body">
+      <p>I built this to show what Jev, a decision model, does with a classic back-office job: sorting documents by type, fast and accurately. Decision models are a new class of model. They bring frontier-level understanding to a judgment, but answer with probabilities instead of generated text. That makes inference cheap and fast enough to run on every document, every page or every passage, which opens up work that was too expensive to do with a decoder-only LLM and too subtle for a bi-encoder's embedding similarity or a keyword rule.</p>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <span>Code: <a href="https://github.com/LandoCole/document-classifier">github.com/LandoCole/document-classifier</a> · MIT</span>
+    <span>Classification by Jev from <a href="https://typesafe.ai">TypeSafe</a></span>
+  </footer>
+</main>
+
+<script type="module">
+import { ALL_TYPES, labelFor } from './src/vocabulary.js';
+import { excerpt } from './src/excerpt.js';
+import { classifyByKeywords } from './src/keywords.js';
+import { wander, settle } from './src/settle.js';
+
+const $ = id => document.getElementById(id);
+const fmt = (n, d = 0) => n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const MAX_FILE_BYTES = 20 * 1024 * 1024;
+const SHORT = { annual_report_10k: '10-K', quarterly_report_10q: '10-Q', current_report_8k: '8-K', insider_transaction_form4: 'Form 4', institutional_holdings_13f: '13F', beneficial_ownership_13d: '13D / 13G', registration_statement: 'S-1' };
+
+// ---------- the type chips ----------
+const chips = new Map();
+for (const t of ALL_TYPES) {
+  const li = document.createElement('li');
+  li.textContent = t.label;
+  li.title = t.definition;
+  $('tags').append(li);
+  chips.set(t.code, li);
+}
+const light = (code, cls = 'on') => { for (const [c, li] of chips) li.classList.toggle(cls, c === code); };
+const clearChips = () => { for (const li of chips.values()) li.classList.remove('on', 'hit', 'kw'); };
+
+// ---------- samples ----------
+let samples = [];
+fetch('samples/index.json').then(r => r.json()).then(list => {
+  samples = list;
+  const groups = new Map();
+  for (const s of list) {
+    if (!groups.has(s.type)) groups.set(s.type, []);
+    groups.get(s.type).push(s);
+  }
+  for (const t of ALL_TYPES) {
+    const group = groups.get(t.code);
+    if (!group) continue;
+    const og = document.createElement('optgroup');
+    og.label = t.label;
+    for (const s of group) og.append(new Option(s.title, s.file));
+    $('sample').append(og);
+  }
+}).catch(() => { $('sample').disabled = true; });
+
+async function loadSample(file) {
+  const s = samples.find(x => x.file === file);
+  if (!s) return;
+  const src = await (await fetch(`samples/${file}`)).text();
+  run({ name: s.title, text: src.replace(/^---\n[\s\S]*?\n---\n/, ''), pages: 0, label: s.type });
+}
+$('sample').addEventListener('change', e => e.target.value && loadSample(e.target.value));
+$('random').addEventListener('click', () => {
+  if (!samples.length) return;
+  const s = samples[Math.floor(Math.random() * samples.length)];
+  $('sample').value = s.file;
+  loadSample(s.file);
+});
+
+// ---------- your file ----------
+async function readFile(file) {
+  if (file.size > MAX_FILE_BYTES) return fail(file.name, 'That file is over 20 MB.');
+  const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+  if (!isPdf && !/\.(txt|md|markdown)$/i.test(file.name) && !file.type.startsWith('text/')) return fail(file.name, 'Choose a PDF, TXT or Markdown file.');
+  $('sample').value = '';
+  if (!isPdf) return run({ name: file.name, text: await file.text(), pages: 0 });
+  setStatus(file.name, 'Reading the PDF…', 'in your browser');
+  const { pdfToText } = await import('./src/pdf.js');
+  const r = await pdfToText(await file.arrayBuffer());
+  if (r.kind === 'scanned') return fail(file.name, 'This PDF looks scanned: it has almost no text to read. Try one with selectable text.');
+  if (r.kind === 'unreadable') return fail(file.name, r.reason);
+  run({ name: file.name, text: r.text, pages: r.pages });
+}
+$('file').addEventListener('change', e => { const f = e.target.files[0]; if (f) readFile(f); e.target.value = ''; });
+const stage = $('stage');
+stage.addEventListener('dragover', e => { e.preventDefault(); stage.classList.add('drag'); });
+stage.addEventListener('dragleave', () => stage.classList.remove('drag'));
+stage.addEventListener('drop', e => { e.preventDefault(); stage.classList.remove('drag'); const f = e.dataTransfer.files[0]; if (f) readFile(f); });
+
+// ---------- a run ----------
+let runId = 0;
+
+function setStatus(name, verdict, sub) {
+  $('docline').innerHTML = '';
+  $('docline').append(Object.assign(document.createElement('b'), { textContent: name }));
+  $('verdict').textContent = verdict;
+  $('verdict').classList.add('weighing');
+  $('sub').textContent = sub;
+  $('probs').hidden = true;
+  clearChips();
+}
+function fail(name, message) {
+  runId++;
+  setStatus(name, 'Not classified', message);
+  $('verdict').classList.remove('weighing');
+}
+
+function resetStats() {
+  for (const id of ['sSpeed', 'sTok', 'sCost', 'sKw']) $(id).textContent = '–';
+  $('sSpeedS').textContent = 'round trip to Jev';
+  $('sCostS').textContent = 'at $0.042 per million tokens';
+}
+
+async function run({ name, text, pages, label }) {
+  const id = ++runId;
+  const ex = excerpt(text, pages || 1);
+  if (!ex.text) return fail(name, 'That document has no text.');
+  resetStats();
+  setStatus(name, 'Weighing…', `Reading ${fmt(ex.tokens)} tokens against ${ALL_TYPES.length} types`);
+  const share = ex.tokens / ex.totalTokens;
+  $('docline').append(`${pages ? ` · ${fmt(pages)} page${pages === 1 ? '' : 's'}` : ''} · ${fmt(ex.totalTokens)} tokens`);
+  $('sent').innerHTML = ex.strategy === 'whole'
+    ? `The <b>whole document</b>: ${fmt(ex.tokens)} tokens.`
+    : `<b>${fmt(ex.tokens)}</b> of ${fmt(ex.totalTokens)} tokens (${fmt(100 * share, share < 0.1 ? 1 : 0)}%): ${ex.strategy === 'outline' ? `the opening, ${fmt(ex.headings)} headings and the closing` : 'the opening and closing'}.`;
+
+  // The legacy approach, run right here for comparison.
+  const t0 = performance.now();
+  const kw = classifyByKeywords(ex.text);
+  const kwMs = performance.now() - t0;
+
+  // Jev, through the server so the API key stays there.
+  const started = performance.now();
+  const request = fetch('/api/classify', { method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ text: ex.text, strategy: ex.strategy, pages: ex.pages, totalTokens: ex.totalTokens }) })
+    .then(async r => ({ ok: r.ok, body: await r.json().catch(() => ({})) }))
+    .catch(() => ({ ok: false, body: { message: 'Could not reach the classifier. Check your connection.' } }));
+
+  // Wander over the types until the answer is in.
+  let answer = null;
+  request.then(a => { answer = a; });
+  const next = wander(ALL_TYPES.map(t => t.code));
+  while (!answer && !reduced) {
+    const c = next();
+    light(c);
+    $('verdict').textContent = labelFor(c);
+    $('sub').textContent = `Weighing ${ALL_TYPES.length} types · ${fmt(performance.now() - started)} ms`;
+    await sleep(85);
+    if (id !== runId) return;
+  }
+  const { ok, body } = await request;
+  if (id !== runId) return;
+  const elapsed = Math.round(performance.now() - started);
+  if (!ok) return fail(name, body.message || 'The classifier is unavailable right now.');
+
+  // Settle: replay the real probabilities, slowing down until it lands on the choice.
+  $('sub').innerHTML = `Jev answered in <b>${fmt(body.latencyMs)} ms</b>`;
+  if (!reduced)
+    for (const hop of settle(body.ranked, body.type)) {
+      light(hop.code);
+      $('verdict').textContent = labelFor(hop.code);
+      await sleep(hop.delay);
+      if (id !== runId) return;
+    }
+
+  // Land.
+  clearChips();
+  chips.get(body.type)?.classList.add('hit');
+  chips.get(kw.type)?.classList.add('kw');
+  $('verdict').classList.remove('weighing');
+  $('verdict').textContent = body.label;
+  const verdictOnLabel = label ? (label === body.type ? ' · matches the label' : ` · labelled ${labelFor(label)}`) : '';
+  $('sub').innerHTML = `<b>${fmt(100 * (body.ranked[0]?.probability ?? body.confidence))}% probability</b> · Jev answered in ${fmt(body.latencyMs)} ms${verdictOnLabel}`;
+
+  // The answer plus any runner-up that got a real share of the probability.
+  const top = body.ranked.filter((r, i) => i === 0 || r.probability >= 0.005).slice(0, 4);
+  const dl = $('probs');
+  dl.innerHTML = '';
+  for (const r of top) {
+    const dt = Object.assign(document.createElement('dt'), { textContent: r.label });
+    const bar = Object.assign(document.createElement('dd'), { innerHTML: `<span class="bar${r.code === body.type ? '' : ' lo'}" style="width:${Math.max(0.4, 100 * r.probability)}%"></span>` });
+    const pct = Object.assign(document.createElement('dd'), { className: 'pct', textContent: r.probability < 0.005 ? '<1%' : `${fmt(100 * r.probability)}%` });
+    dl.append(dt, bar, pct);
+  }
+  if (top.length === 1) dl.append(Object.assign(document.createElement('dt'), { textContent: 'Every other type' }), document.createElement('dd'), Object.assign(document.createElement('dd'), { className: 'pct', textContent: '<1%' }));
+  dl.hidden = false;
+
+  $('sSpeed').textContent = `${fmt(body.latencyMs)} ms`;
+  $('sSpeedS').textContent = `${fmt(elapsed)} ms including the trip here`;
+  $('sTok').textContent = fmt(body.inputTokens);
+  $('sTokS').textContent = ex.strategy === 'whole' ? 'whole document plus the 21 definitions' : `excerpt of ${fmt(ex.totalTokens)} plus definitions`;
+  $('sCost').textContent = `$${body.costUsd < 0.001 ? body.costUsd.toFixed(5) : fmt(body.costUsd, 4)}`;
+  $('sCostS').textContent = `$${fmt(body.costUsd * 1e6)} per million like it`;
+  $('sKw').textContent = kw.type === body.type ? 'The same' : (SHORT[kw.type] || labelFor(kw.type));
+  $('sKwS').textContent = `in ${kwMs < 1 ? '<1' : fmt(kwMs)} ms${label ? (kw.type === label ? ' · right' : ' · wrong') : ''}`;
+}
+
+// ---------- the benchmark ----------
+fetch('bench/results.json').then(r => r.json()).then(renderBench).catch(() => { $('benchCap').textContent = 'The benchmark results could not be loaded.'; });
+
+function renderBench(res) {
+  const ms = m => m.medianLatencyMs < 10 ? '<10 ms' : m.medianLatencyMs >= 1000 ? `${fmt(m.medianLatencyMs / 1000, 1)} s` : `${fmt(m.medianLatencyMs)} ms`;
+  const cost = c => c === 0 ? 'local' : c < 1 ? `$${fmt(c, 2)}` : `$${fmt(c, 2)}`;
+  $('benchCap').textContent = `${res.documents} documents · ${res.date}`;
+  const tbody = $('bench').tBodies[0];
+  for (const m of res.methods) {
+    const tr = tbody.insertRow();
+    if (m.id === 'jev') tr.className = 'jev';
+    tr.innerHTML = `<td>${m.name}<span class="k">${m.kind}</span></td><td>${fmt(100 * m.accuracy)}%</td><td>${ms(m)}</td><td>${m.meanInputTokens ? fmt(m.meanInputTokens) : '–'}</td><td>${cost(m.costPerThousandDocs)}</td>`;
+  }
+  const jev = res.methods.find(m => m.id === 'jev');
+  const llms = res.methods.filter(m => m.kind === 'Decoder-only LLM');
+  const best = llms.slice().sort((a, b) => b.accuracy - a.accuracy || a.costPerThousandDocs - b.costPerThousandDocs)[0];
+  if (jev && best) {
+    const cheaper = best.costPerThousandDocs / jev.costPerThousandDocs, faster = best.medianLatencyMs / jev.medianLatencyMs;
+    const acc = jev.accuracy >= best.accuracy ? (jev.accuracy > best.accuracy ? 'more accurate than' : 'as accurate as') : `within ${fmt(100 * (best.accuracy - jev.accuracy))} points of`;
+    $('takeaway').textContent = `Jev was ${acc} the best LLM here, ${best.name.replace(/-/g, '\u2011')}, at ${cheaper >= 2 ? `1/${fmt(cheaper)} of the cost` : 'a lower cost'}${faster >= 1.5 ? ` and ${fmt(faster, faster < 10 ? 1 : 0)}× the speed` : ''}.`;
+  }
+  drawChart(res.methods);
+}
+
+function drawChart(methods) {
+  const W = 672, H = 336, L = 48, R = 24, T = 24, B = 48;
+  const priced = methods.filter(m => m.costPerThousandDocs > 0);
+  if (!priced.length) return;
+  const lo = Math.floor(Math.log10(Math.min(...priced.map(m => m.costPerThousandDocs)))), hi = Math.ceil(Math.log10(Math.max(...priced.map(m => m.costPerThousandDocs))));
+  const free = L + 24, x0 = L + 72;
+  const x = c => c > 0 ? x0 + (Math.log10(c) - lo) / (hi - lo) * (W - R - x0) : free;
+  const minAcc = Math.max(0, Math.floor(Math.min(...methods.map(m => m.accuracy)) * 10) / 10);
+  const y = a => T + (1 - (a - minAcc) / (1 - minAcc)) * (H - T - B);
+  let s = `<line class="ax" x1="${L}" y1="${H - B}" x2="${W - R}" y2="${H - B}"/><line class="ax" x1="${L}" y1="${T}" x2="${L}" y2="${H - B}"/>`;
+  for (let a = minAcc; a <= 1.0001; a += 0.1) s += `<line class="gr" x1="${L}" y1="${y(a)}" x2="${W - R}" y2="${y(a)}"/><text class="t" x="${L - 8}" y="${y(a) + 3}" text-anchor="end">${fmt(100 * a)}%</text>`;
+  for (let e = lo; e <= hi; e++) s += `<text class="t" x="${x(10 ** e)}" y="${H - B + 20}" text-anchor="middle">$${10 ** e >= 1 ? fmt(10 ** e) : (10 ** e).toFixed(-e)}</text>`;
+  s += `<text class="t" x="${free}" y="${H - B + 20}" text-anchor="middle">local</text>`;
+  // Label each point to its right, else left, below or above, wherever it doesn't hit a label already placed.
+  const placed = [], hits = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+  for (const m of methods) {
+    const px = x(m.costPerThousandDocs), py = y(m.accuracy), w = m.name.length * 7.2 + 4;
+    const spots = [[px + 10, py + 5, 'start', px + 8], [px - 10, py + 5, 'end', px - 12 - w], [px, py + 22, 'middle', px - w / 2], [px, py - 12, 'middle', px - w / 2]];
+    const fits = spot => { const box = { x: spot[3], y: spot[1] - 13, w, h: 17 }; return box.x + box.w <= W && !placed.some(b => hits(b, box)) ? box : null; };
+    const spot = spots.find(fits) ?? spots[0];
+    placed.push(fits(spot) ?? { x: spot[3], y: spot[1] - 13, w, h: 17 });
+    s += `<circle class="pt${m.id === 'jev' ? ' jev' : ''}" cx="${px}" cy="${py}" r="${m.id === 'jev' ? 6 : 5}"/><text class="n" x="${spot[0]}" y="${spot[1]}" text-anchor="${spot[2]}">${m.name}</text>`;
+  }
+  const svg = $('chartSvg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = s;
+  $('chart').hidden = false;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+.env
+.env.*
+node_modules/
+bench/cache/
+.DS_Store

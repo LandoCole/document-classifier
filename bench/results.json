@@ -1,0 +1,310 @@
+{
+  "date": "2026-10-20",
+  "documents": 43,
+  "methods": [
+    {
+      "id": "jev",
+      "name": "Jev",
+      "kind": "Decision model",
+      "model": "jev-1.13.0",
+      "n": 43,
+      "correct": 43,
+      "accuracy": 1,
+      "medianLatencyMs": 136,
+      "p90LatencyMs": 218,
+      "meanInputTokens": 3343,
+      "meanOutputTokens": 0,
+      "costPerThousandDocs": 0.14039037209302327,
+      "misses": []
+    },
+    {
+      "id": "claude-opus-5-5",
+      "name": "Claude Opus 5.5",
+      "kind": "Decoder-only LLM",
+      "model": "claude-opus-5-5",
+      "n": 43,
+      "correct": 43,
+      "accuracy": 1,
+      "medianLatencyMs": 1558,
+      "p90LatencyMs": 2134,
+      "meanInputTokens": 4398,
+      "meanOutputTokens": 16,
+      "costPerThousandDocs": 17.910046511627915,
+      "misses": []
+    },
+    {
+      "id": "gpt-5.5",
+      "name": "GPT-5.5",
+      "kind": "Decoder-only LLM",
+      "model": "gpt-5.5",
+      "n": 43,
+      "correct": 43,
+      "accuracy": 1,
+      "medianLatencyMs": 1111,
+      "p90LatencyMs": 1724,
+      "meanInputTokens": 2662,
+      "meanOutputTokens": 16,
+      "costPerThousandDocs": 13.7846511627907,
+      "misses": []
+    },
+    {
+      "id": "claude-haiku-5-5",
+      "name": "Claude Haiku 5.5",
+      "kind": "Decoder-only LLM",
+      "model": "claude-haiku-5-5",
+      "n": 43,
+      "correct": 41,
+      "accuracy": 0.9534883720930233,
+      "medianLatencyMs": 954,
+      "p90LatencyMs": 1367,
+      "meanInputTokens": 4398,
+      "meanOutputTokens": 16,
+      "costPerThousandDocs": 0.4476116279069768,
+      "misses": [
+        {
+          "file": "bond_official_statement-1.md",
+          "label": "bond_official_statement",
+          "predicted": "other"
+        },
+        {
+          "file": "bond_official_statement-2.md",
+          "label": "bond_official_statement",
+          "predicted": "other"
+        }
+      ]
+    },
+    {
+      "id": "gpt-5.4-mini",
+      "name": "GPT-5.4 mini",
+      "kind": "Decoder-only LLM",
+      "model": "gpt-5.4-mini",
+      "n": 43,
+      "correct": 42,
+      "accuracy": 0.9767441860465116,
+      "medianLatencyMs": 871,
+      "p90LatencyMs": 1104,
+      "meanInputTokens": 2662,
+      "meanOutputTokens": 35,
+      "costPerThousandDocs": 2.1555000000000004,
+      "misses": [
+        {
+          "file": "other-1.md",
+          "label": "other",
+          "predicted": "earnings_release"
+        }
+      ]
+    },
+    {
+      "id": "minilm",
+      "name": "MiniLM bi-encoder",
+      "kind": "Bi-encoder",
+      "model": "minilm",
+      "n": 43,
+      "correct": 18,
+      "accuracy": 0.4186046511627907,
+      "medianLatencyMs": 155,
+      "p90LatencyMs": 329,
+      "meanInputTokens": 0,
+      "meanOutputTokens": 0,
+      "costPerThousandDocs": 0,
+      "misses": [
+        {
+          "file": "beneficial_ownership_13d-1.md",
+          "label": "beneficial_ownership_13d",
+          "predicted": "institutional_holdings_13f"
+        },
+        {
+          "file": "beneficial_ownership_13d-2.md",
+          "label": "beneficial_ownership_13d",
+          "predicted": "institutional_holdings_13f"
+        },
+        {
+          "file": "bond_official_statement-2.md",
+          "label": "bond_official_statement",
+          "predicted": "other"
+        },
+        {
+          "file": "brokerage_statement-1.md",
+          "label": "brokerage_statement",
+          "predicted": "other"
+        },
+        {
+          "file": "brokerage_statement-2.md",
+          "label": "brokerage_statement",
+          "predicted": "other"
+        },
+        {
+          "file": "current_report_8k-2.md",
+          "label": "current_report_8k",
+          "predicted": "insider_transaction_form4"
+        },
+        {
+          "file": "earnings_call_transcript-1.md",
+          "label": "earnings_call_transcript",
+          "predicted": "quarterly_report_10q"
+        },
+        {
+          "file": "earnings_call_transcript-2.md",
+          "label": "earnings_call_transcript",
+          "predicted": "investor_presentation"
+        },
+        {
+          "file": "earnings_release-1.md",
+          "label": "earnings_release",
+          "predicted": "fund_shareholder_report"
+        },
+        {
+          "file": "earnings_release-2.md",
+          "label": "earnings_release",
+          "predicted": "annual_report_10k"
+        },
+        {
+          "file": "equity_research_report-1.md",
+          "label": "equity_research_report",
+          "predicted": "institutional_holdings_13f"
+        },
+        {
+          "file": "equity_research_report-2.md",
+          "label": "equity_research_report",
+          "predicted": "investor_presentation"
+        },
+        {
+          "file": "fund_fact_sheet-1.md",
+          "label": "fund_fact_sheet",
+          "predicted": "fund_shareholder_report"
+        },
+        {
+          "file": "fund_fact_sheet-2.md",
+          "label": "fund_fact_sheet",
+          "predicted": "fund_shareholder_report"
+        },
+        {
+          "file": "fund_prospectus-1.md",
+          "label": "fund_prospectus",
+          "predicted": "fund_shareholder_report"
+        },
+        {
+          "file": "insider_transaction_form4-2.md",
+          "label": "insider_transaction_form4",
+          "predicted": "beneficial_ownership_13d"
+        },
+        {
+          "file": "investor_presentation-2.md",
+          "label": "investor_presentation",
+          "predicted": "other"
+        },
+        {
+          "file": "other-1.md",
+          "label": "other",
+          "predicted": "earnings_release"
+        },
+        {
+          "file": "other-2.md",
+          "label": "other",
+          "predicted": "bond_official_statement"
+        },
+        {
+          "file": "registration_statement-1.md",
+          "label": "registration_statement",
+          "predicted": "insider_transaction_form4"
+        },
+        {
+          "file": "registration_statement-2.md",
+          "label": "registration_statement",
+          "predicted": "insider_transaction_form4"
+        },
+        {
+          "file": "shareholder_letter-1.md",
+          "label": "shareholder_letter",
+          "predicted": "annual_report_10k"
+        },
+        {
+          "file": "shareholder_letter-2.md",
+          "label": "shareholder_letter",
+          "predicted": "beneficial_ownership_13d"
+        },
+        {
+          "file": "trade_confirmation-1.md",
+          "label": "trade_confirmation",
+          "predicted": "other"
+        },
+        {
+          "file": "trade_confirmation-2.md",
+          "label": "trade_confirmation",
+          "predicted": "other"
+        }
+      ]
+    },
+    {
+      "id": "keywords",
+      "name": "Keyword rules",
+      "kind": "Rules",
+      "model": "keywords",
+      "n": 43,
+      "correct": 32,
+      "accuracy": 0.7441860465116279,
+      "medianLatencyMs": 0.31,
+      "p90LatencyMs": 0.52,
+      "meanInputTokens": 0,
+      "meanOutputTokens": 0,
+      "costPerThousandDocs": 0,
+      "misses": [
+        {
+          "file": "bond_official_statement-2.md",
+          "label": "bond_official_statement",
+          "predicted": "earnings_release"
+        },
+        {
+          "file": "brokerage_statement-1.md",
+          "label": "brokerage_statement",
+          "predicted": "trade_confirmation"
+        },
+        {
+          "file": "earnings_release-2.md",
+          "label": "earnings_release",
+          "predicted": "annual_report_10k"
+        },
+        {
+          "file": "fund_shareholder_report-1.md",
+          "label": "fund_shareholder_report",
+          "predicted": "bond_official_statement"
+        },
+        {
+          "file": "investor_presentation-2.md",
+          "label": "investor_presentation",
+          "predicted": "quarterly_report_10q"
+        },
+        {
+          "file": "other-1.md",
+          "label": "other",
+          "predicted": "earnings_call_transcript"
+        },
+        {
+          "file": "other-3.md",
+          "label": "other",
+          "predicted": "credit_rating_report"
+        },
+        {
+          "file": "quarterly_report_10q-1.md",
+          "label": "quarterly_report_10q",
+          "predicted": "annual_report_10k"
+        },
+        {
+          "file": "quarterly_report_10q-2.md",
+          "label": "quarterly_report_10q",
+          "predicted": "annual_report_10k"
+        },
+        {
+          "file": "shareholder_letter-1.md",
+          "label": "shareholder_letter",
+          "predicted": "annual_report_10k"
+        },
+        {
+          "file": "shareholder_letter-2.md",
+          "label": "shareholder_letter",
+          "predicted": "annual_report_10k"
+        }
+      ]
+    }
+  ]
+}

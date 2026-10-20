@@ -1,0 +1,19 @@
+{
+  "name": "document-classifier",
+  "version": "1.0.0",
+  "description": "Document-type classification with Jev, a decision model: token-budgeted excerpts, one typed question, a probability for every type. Benchmarked against keyword rules, a bi-encoder and decoder-only LLMs.",
+  "type": "module",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "test": "node --test",
+    "demo": "node scripts/serve.js",
+    "bench": "node bench/run.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@huggingface/transformers": "^3.8.1"
+  }
+}
